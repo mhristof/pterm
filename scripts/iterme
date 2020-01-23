@@ -1,0 +1,49 @@
+#! /usr/bin/env python3
+
+import json
+import os
+import configparser
+
+def main():
+    """docstring for main"""
+    aws_profiles = get_aws_profiles()
+
+    iterm_profiles = []
+    for prof in aws_profiles:
+        iterm_profiles += [mkprofile(prof)]
+
+    profiles = {
+        "Profiles": iterm_profiles,
+    }
+
+    with open(os.path.expanduser("~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json"), "w") as out:
+        out.write(json.dumps(profiles, indent=4))
+
+
+def mkprofile(aws_profile):
+    user = os.getenv("USER")
+    ret = {
+        "Name": aws_profile,
+        "Guid": aws_profile,
+        "Command" : f"/usr/bin/env AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
+        "Custom Command" : "Yes",
+        "Unlimited Scrollback" : True,
+        "Title Components" : 32,
+    }
+    if 'prod' in aws_profile:
+        ret["Background Color"] = {
+            "Red Component" : 0.217376708984375,
+            "Color Space" : "sRGB",
+            "Blue Component" : 0,
+            "Alpha Component" : 1,
+            "Green Component" : 0
+        }
+    return  ret
+
+def get_aws_profiles():
+    config = configparser.ConfigParser()
+    config.read(os.path.expanduser('~/.aws/config'))
+    return [x.split()[1] for x in config.sections()]
+
+if __name__ == '__main__':
+    main()
