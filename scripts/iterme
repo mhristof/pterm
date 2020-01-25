@@ -1,26 +1,59 @@
 #! /usr/bin/env python3
 
 import json
+import sys
 import os
 import configparser
+from difflib import unified_diff
+import tempfile
 
 def main():
     """docstring for main"""
-    aws_profiles = get_aws_profiles()
+    import argparse
+    parser = argparse.ArgumentParser(description='Generates iterm2 dynamic profiles')
+    # subparsers = parser.add_subparsers(help='commands')
 
-    iterm_profiles = []
-    for prof in aws_profiles:
-        iterm_profiles += [mkprofile(prof)]
+    parser.add_argument('-d', '--diff',
+                        action='store_true',
+                        help='Print a diff to the current profiles')
+    parser.add_argument('-n', '--dry-run',
+                        action='store_true',
+                        help='Dry run mode')
+    parser.add_argument('-v', '--verbose',
+                        action='count',
+                        default=0,
+                        help='Increase verbosity')
 
+    args = parser.parse_args()
+
+    aws_profiles = create_aws_profiles()
     profiles = {
-        "Profiles": iterm_profiles,
+        "Profiles": aws_profiles,
     }
 
-    with open(os.path.expanduser("~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json"), "w") as out:
-        out.write(json.dumps(profiles, indent=4))
+
+    dest = os.path.expanduser("~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json")
+    if args.diff:
+        with open(dest) as input_:
+            current = json.load(input_)
+        sys.stdout.writelines(unified_diff(json.dumps(current, indent=4), json.dumps(profiles, indent=4)))
+    elif args.dry_run:
+        print(json.dumps(profiles, indent=4))
+    else:
+        with open(dest, "w") as out:
+            out.write(json.dumps(profiles, indent=4))
 
 
-def mkprofile(aws_profile):
+def create_aws_profiles():
+    aws_profiles = get_aws_profiles()
+
+    profiles = []
+    for prof, account, role in aws_profiles:
+        profiles += [mkprofile(prof, account, role)]
+    return profiles
+
+
+def mkprofile(aws_profile, account=None, role=None):
     user = os.getenv("USER")
     ret = {
         "Name": aws_profile,
@@ -29,7 +62,13 @@ def mkprofile(aws_profile):
         "Custom Command" : "Yes",
         "Unlimited Scrollback" : True,
         "Title Components" : 32,
+        'Tags': [],
     }
+    if account is not None:
+        ret['Tags'] += [account]
+    if role is not None:
+        ret['Tags'] += [role]
+
     if 'prod' in aws_profile:
         ret["Background Color"] = {
             "Red Component" : 0.217376708984375,
@@ -43,7 +82,15 @@ def mkprofile(aws_profile):
 def get_aws_profiles():
     config = configparser.ConfigParser()
     config.read(os.path.expanduser('~/.aws/config'))
-    return [x.split()[1] for x in config.sections()]
+    ret = []
+    for x in config.sections():
+        account_number = None
+        role = None
+        if 'role_arn' in config[x]:
+            account_number = config[x]['role_arn'].split(':')[4]
+            role = config[x]['role_arn'].split(':')[5]
+        ret += [(x.split()[1], account_number, role)]
+    return ret
 
 if __name__ == '__main__':
     main()
