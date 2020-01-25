@@ -6,6 +6,8 @@ import os
 import configparser
 from difflib import unified_diff
 import tempfile
+import yaml
+import copy
 
 def main():
     """docstring for main"""
@@ -27,8 +29,10 @@ def main():
     args = parser.parse_args()
 
     aws_profiles = create_aws_profiles()
+    k8s_profiles = create_k8s_profiles()
+
     profiles = {
-        "Profiles": aws_profiles,
+        "Profiles": aws_profiles + k8s_profiles,
     }
 
 
@@ -44,6 +48,63 @@ def main():
             out.write(json.dumps(profiles, indent=4))
 
 
+def create_k8s_profiles():
+    """docstring for create_k8s_profiles"""
+    user = os.getenv("USER")
+
+    with open(os.path.expanduser("~/.kube/config")) as file:
+        config = yaml.full_load(file)
+
+    clusters = [x['name'] for x in config['clusters']]
+
+    profiles = []
+    for cluster in clusters:
+        this = carve_k8s_cluster(config, cluster)
+        cfg = os.path.expanduser(f"~/.kube/config.{cluster}.yml")
+        aws_profile = None
+        try:
+            env = this['users'][0]['user']['exec']['env'][0]
+            if env['name'] != 'AWS_PROFILE':
+                pass
+            aws_profile = env['value']
+        except KeyError:
+            pass
+
+        with open(cfg, "w") as out:
+            yaml.dump(this, out)
+        new = create_profile(
+            f'k8s-{cluster}',
+            cmd=f"/usr/bin/env KUBECONFIG={cfg} AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
+            change_title=False,
+            tags=['k8s'],
+        )
+        new["Background Color"] = {
+                "Red Component" : 0,
+                "Color Space" : "sRGB",
+                "Blue Component" : 0.2213592529296875,
+                "Alpha Component" : 1,
+                "Green Component" : 0
+            },
+        profiles += [new]
+    return profiles
+
+
+def carve_k8s_cluster(config, cluster):
+    """docstring for carve_k8s_cluster"""
+
+    config_cluster = [x for x in config['clusters'] if x['name'] == cluster]
+    config_context = [x for x in config['contexts'] if x['name'] == cluster]
+    config_user = [x for x in config['users'] if x['name'] == cluster]
+
+    new = copy.deepcopy(config)
+    new['clusters'] = config_cluster
+    new['contexts'] = config_context
+    new['users'] = config_user
+    new['current-context'] = cluster
+
+    return new
+
+
 def create_aws_profiles():
     aws_profiles = get_aws_profiles()
 
@@ -53,17 +114,33 @@ def create_aws_profiles():
     return profiles
 
 
-def mkprofile(aws_profile, account=None, role=None):
-    user = os.getenv("USER")
+def create_profile(name, cmd=None, change_title=False, tags=None):
+    if tags is None:
+        tags = []
+
     ret = {
-        "Name": aws_profile,
-        "Guid": aws_profile,
-        "Command" : f"/usr/bin/env AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
-        "Custom Command" : "Yes",
+        "Name": name,
+        "Guid": name,
         "Unlimited Scrollback" : True,
         "Title Components" : 32,
-        'Tags': [],
+        "Custom Window Title" : name,
+        "Allow Title Setting" : change_title,
+        'Tags': tags,
     }
+
+    if cmd is not None:
+        ret["Command"] = cmd
+        ret["Custom Command"] = "Yes"
+    return ret
+
+def mkprofile(aws_profile, account=None, role=None):
+    user = os.getenv("USER")
+    ret = create_profile(
+        aws_profile,
+        cmd=f"/usr/bin/env AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
+        change_title=False,
+    )
+
     if account is not None:
         ret['Tags'] += [account]
     if role is not None:
