@@ -78,13 +78,13 @@ def create_k8s_profiles():
             change_title=False,
             tags=['k8s'],
         )
-        new["Background Color"] = {
-                "Red Component" : 0,
-                "Color Space" : "sRGB",
-                "Blue Component" : 0.2213592529296875,
-                "Alpha Component" : 1,
-                "Green Component" : 0
-            },
+        new["Background Color"] =  {
+            "Red Component" : 0,
+            "Color Space" : "sRGB",
+            "Blue Component" : 0.38311767578125,
+            "Alpha Component" : 1,
+            "Green Component" : 0
+        }
         profiles += [new]
     return profiles
 
@@ -125,7 +125,8 @@ def create_profile(name, cmd=None, change_title=False, tags=None):
         "Title Components" : 32,
         "Custom Window Title" : name,
         "Allow Title Setting" : change_title,
-        'Tags': tags,
+        "Tags": tags,
+        "Badge Text" : name,
     }
 
     if cmd is not None:
