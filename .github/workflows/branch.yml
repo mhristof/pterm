@@ -16,8 +16,7 @@ jobs:
           ignore: master
       - uses: actions/checkout@v1
       - name: current master version
-        run: |
-          echo "::set-output name=version::$(make mversion)"
+        run: echo "::set-output name=version::$(git show origin/master:version.txt)"
         id: version
       - name: current fragment
         run: |
@@ -32,7 +31,7 @@ jobs:
           current-version: ${{ steps.version.outputs.version }}
           version-fragment: ${{ steps.fragment.outputs.fragment }}
       - name: update current version
-        run: sed -i.bak 's/<string>${{ steps.version.outputs.version }}<string>/<string>${{ steps.next_version.outputs.next-version }}<string>/' info.plist
+        run: echo ${{ steps.next_version.outputs.next-version }} > version.txt
       - name: current branch
         run: echo "::set-output name=branch::${GITHUB_REF##*/}"
         id: branch
@@ -41,5 +40,5 @@ jobs:
           git config --global user.name 'Mike'
           git config --global user.email 'mhristof@users.noreply.github.com'
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
-          git diff --exit-code || git commit info.plist -m 'bumped version'
+          git diff --exit-code || git commit version.txt -m 'bumped version'
           git push origin HEAD:${{ steps.branch.outputs.branch }}
