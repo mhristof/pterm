@@ -9,11 +9,13 @@ import tempfile
 import yaml
 import copy
 
+
 def main():
     """docstring for main"""
     import argparse
-    parser = argparse.ArgumentParser(description='Generates iterm2 dynamic profiles')
-    # subparsers = parser.add_subparsers(help='commands')
+    parser = argparse.ArgumentParser(
+        description='Generates iterm2 dynamic profiles'
+    )
 
     parser.add_argument('-d', '--diff',
                         action='store_true',
@@ -35,12 +37,17 @@ def main():
         "Profiles": aws_profiles + k8s_profiles,
     }
 
-
-    dest = os.path.expanduser("~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json")
+    dest = os.path.expanduser(
+        "~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json"
+    )
     if args.diff:
         with open(dest) as input_:
             current = json.load(input_)
-        sys.stdout.writelines(unified_diff(json.dumps(current, indent=4), json.dumps(profiles, indent=4)))
+        sys.stdout.writelines(
+            unified_diff(
+                json.dumps(current, indent=4), json.dumps(profiles, indent=4)
+            )
+        )
     elif args.dry_run:
         print(json.dumps(profiles, indent=4))
     else:
@@ -60,7 +67,9 @@ def create_k8s_profiles():
     profiles = []
     for cluster in clusters:
         this = carve_k8s_cluster(config, cluster)
-        cfg = os.path.expanduser(f"~/.kube/config.{cluster}.yml")
+        cfg = os.path.expanduser(
+            f"~/.kube/config.{cluster.replace('/', '__')}.yml"
+        )
         aws_profile = None
         try:
             env = this['users'][0]['user']['exec']['env'][0]
@@ -68,6 +77,10 @@ def create_k8s_profiles():
                 pass
             aws_profile = env['value']
         except KeyError:
+            pass
+        except TypeError:
+            pass
+        except IndexError:
             pass
 
         with open(cfg, "w") as out:
@@ -78,12 +91,12 @@ def create_k8s_profiles():
             change_title=False,
             tags=['k8s'],
         )
-        new["Background Color"] =  {
-            "Red Component" : 0,
-            "Color Space" : "sRGB",
-            "Blue Component" : 0.38311767578125,
-            "Alpha Component" : 1,
-            "Green Component" : 0
+        new["Background Color"] = {
+            "Red Component": 0,
+            "Color Space": "sRGB",
+            "Blue Component": 0.38311767578125,
+            "Alpha Component": 1,
+            "Green Component": 0
         }
         profiles += [new]
     return profiles
@@ -121,18 +134,19 @@ def create_profile(name, cmd=None, change_title=False, tags=None):
     ret = {
         "Name": name,
         "Guid": name,
-        "Unlimited Scrollback" : True,
-        "Title Components" : 32,
-        "Custom Window Title" : name,
-        "Allow Title Setting" : change_title,
+        "Unlimited Scrollback": True,
+        "Title Components": 32,
+        "Custom Window Title": name,
+        "Allow Title Setting": change_title,
         "Tags": tags,
-        "Badge Text" : name,
+        "Badge Text": name,
     }
 
     if cmd is not None:
         ret["Command"] = cmd
         ret["Custom Command"] = "Yes"
     return ret
+
 
 def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
     user = os.getenv("USER")
@@ -151,13 +165,14 @@ def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
 
     if 'prod' in aws_profile:
         ret["Background Color"] = {
-            "Red Component" : 0.217376708984375,
-            "Color Space" : "sRGB",
-            "Blue Component" : 0,
-            "Alpha Component" : 1,
-            "Green Component" : 0
+            "Red Component": 0.217376708984375,
+            "Color Space": "sRGB",
+            "Blue Component": 0,
+            "Alpha Component": 1,
+            "Green Component": 0
         }
-    return  ret
+    return ret
+
 
 def get_aws_profiles():
     config = configparser.ConfigParser()
@@ -181,6 +196,7 @@ def get_aws_profiles():
             log = f'log-{loggin_profiles[x[0]]}'
         x += [log]
     return ret
+
 
 if __name__ == '__main__':
     main()
