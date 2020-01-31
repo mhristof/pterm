@@ -2,15 +2,15 @@
 import setuptools
 
 setuptools.setup(
-    name="iterme", # Replace with your own username
-    version="0.0.1",
+    name="pterm",
+    version=tuple(open('version.txt', 'r'))[0],
     author="Mike Christof",
     author_email="mhristof@gmail.com",
     description="Setup iterm2",
     long_description="",
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    url="https://github.com/mhristof/pterm",
     packages=setuptools.find_packages(),
     python_requires='>=3.6',
-    scripts=['scripts/iterme'],
+    scripts=['scripts/pterm'],
 )
