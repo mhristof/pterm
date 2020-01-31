@@ -38,13 +38,3 @@ jobs:
           asset_path: ./pterm.zip
           asset_name: pterm.zip
           asset_content_type: application/zip
-      - name: pypi release
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-setuptools python3-dev
-          python3 -m pip install --user --upgrade setuptools wheel twine
-          python3 setup.py sdist bdist_wheel
-          twine upload dist/*
-        env:
-          TWINE_USERNAME: '__token__'
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
