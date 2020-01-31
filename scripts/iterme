@@ -109,8 +109,8 @@ def create_aws_profiles():
     aws_profiles = get_aws_profiles()
 
     profiles = []
-    for prof, account, role in aws_profiles:
-        profiles += [mkprofile(prof, account, role)]
+    for prof, account, role, loggin_for in aws_profiles:
+        profiles += [mkprofile(prof, account, role, loggin_for)]
     return profiles
 
 
@@ -134,7 +134,7 @@ def create_profile(name, cmd=None, change_title=False, tags=None):
         ret["Custom Command"] = "Yes"
     return ret
 
-def mkprofile(aws_profile, account=None, role=None):
+def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
     user = os.getenv("USER")
     ret = create_profile(
         aws_profile,
@@ -146,6 +146,8 @@ def mkprofile(aws_profile, account=None, role=None):
         ret['Tags'] += [account]
     if role is not None:
         ret['Tags'] += [role]
+    if loggin_for is not None:
+        ret['Tags'] += [loggin_for]
 
     if 'prod' in aws_profile:
         ret["Background Color"] = {
@@ -161,13 +163,23 @@ def get_aws_profiles():
     config = configparser.ConfigParser()
     config.read(os.path.expanduser('~/.aws/config'))
     ret = []
+    loggin_profiles = {}
     for x in config.sections():
         account_number = None
         role = None
+        name = x.split()[1]
         if 'role_arn' in config[x]:
             account_number = config[x]['role_arn'].split(':')[4]
             role = config[x]['role_arn'].split(':')[5]
-        ret += [(x.split()[1], account_number, role)]
+        if 'source_profile' in config[x]:
+            loggin_profiles[config[x]['source_profile']] = name
+        ret += [[name, account_number, role]]
+
+    for x in ret:
+        log = None
+        if x[0] in loggin_profiles.keys():
+            log = f'log-{loggin_profiles[x[0]]}'
+        x += [log]
     return ret
 
 if __name__ == '__main__':
