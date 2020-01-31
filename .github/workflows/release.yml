@@ -41,7 +41,7 @@ jobs:
       - name: pypi release
         run: |
           sudo apt-get update
-          sudo apt-get install -y python-setuptools
+          sudo apt-get install -y python3-setuptools
           python3 -m pip install --user --upgrade setuptools wheel twine
           python3 setup.py sdist bdist_wheel
           twine upload dist/*
