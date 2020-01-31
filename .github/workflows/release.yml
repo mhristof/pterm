@@ -38,3 +38,11 @@ jobs:
           asset_path: ./pterm.zip
           asset_name: pterm.zip
           asset_content_type: application/zip
+      - name: pypi release
+        run: |
+          python3 -m pip install --user --upgrade setuptools wheel
+          python3 setup.py sdist bdist_wheel
+          twine upload dist/*
+        env:
+          TWINE_USERNAME: '__token__'
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
