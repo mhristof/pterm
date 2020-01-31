@@ -60,7 +60,7 @@ def create_k8s_profiles():
     profiles = []
     for cluster in clusters:
         this = carve_k8s_cluster(config, cluster)
-        cfg = os.path.expanduser(f"~/.kube/config.{cluster}.yml")
+        cfg = os.path.expanduser(f"~/.kube/config.{cluster.replace('/', '__')}.yml")
         aws_profile = None
         try:
             env = this['users'][0]['user']['exec']['env'][0]
@@ -68,6 +68,10 @@ def create_k8s_profiles():
                 pass
             aws_profile = env['value']
         except KeyError:
+            pass
+        except TypeError:
+            pass
+        except IndexError:
             pass
 
         with open(cfg, "w") as out:
