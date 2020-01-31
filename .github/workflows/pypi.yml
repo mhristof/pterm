@@ -1,0 +1,20 @@
+name: release
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  build:
+    runs-on: python:3
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: pypi release
+        run: |
+          python3 -m pip install --user --upgrade setuptools wheel twine
+          python3 setup.py sdist bdist_wheel
+          twine upload dist/*
+        env:
+          TWINE_USERNAME: '__token__'
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
