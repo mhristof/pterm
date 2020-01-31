@@ -1,0 +1,45 @@
+name: branches
+
+on:
+  push:
+    branches-ignore:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: deepakputhraya/action-branch-name@master
+        with:
+          allowed_prefixes: 'major,feature,bug'
+          ignore: master
+      - uses: actions/checkout@v1
+      - name: current master version
+        run: |
+          echo "::set-output name=version::$(make mversion)"
+        id: version
+      - name: current fragment
+        run: |
+          export CURRENT_BRANCH=${GITHUB_REF##*/}
+          make fragment
+          echo "::set-output name=fragment::$(make fragment)"
+        id: fragment
+      - name: bump release version
+        id: next_version
+        uses: christian-draeger/increment-semantic-version@4be8566
+        with:
+          current-version: ${{ steps.version.outputs.version }}
+          version-fragment: ${{ steps.fragment.outputs.fragment }}
+      - name: update current version
+        run: sed -i.bak 's/<string>${{ steps.version.outputs.version }}<string>/<string>${{ steps.next_version.outputs.next-version }}<string>/' info.plist
+      - name: current branch
+        run: echo "::set-output name=branch::${GITHUB_REF##*/}"
+        id: branch
+      - name: push
+        run: |
+          git config --global user.name 'Mike'
+          git config --global user.email 'mhristof@users.noreply.github.com'
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
+          git diff --exit-code || git commit info.plist -m 'bumped version'
+          git push origin HEAD:${{ steps.branch.outputs.branch }}

@@ -1,0 +1,36 @@
+name: update
+
+on:
+  schedule:
+    - cron:  '0 14 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Setup Node.js for use with actions
+      uses: actions/setup-node@v1.1.0
+    - name: install codedown
+      run: npm install -g codedown
+    - name: get terraform-provider-aws
+      run: make terraform-provider-aws
+    - name: generate all
+      run: make
+    - name: test
+      run: ./options.sh | jq .
+    - uses: webfactory/ssh-agent@v0.2.0
+      with:
+        ssh-private-key: ${{ secrets.DEPLOY_ID_RSA }}
+    - name: create pr
+      run: |
+        git diff-index --quiet HEAD -- && exit 0
+        commit=$(git --git-dir terraform-provider-aws/.git rev-parse --short HEAD)
+        git checkout -b updating-generated-files-$commit
+        git add alfred
+        git config --global user.email "mhristof@gmail.com"
+        git config --global user.name "Mbot"
+        git config --global url."git@github.com:".insteadOf "https://github.com/"
+        git commit -m 'Updated generated files'
+        git push --set-upstream origin updating-generated-files-$commit

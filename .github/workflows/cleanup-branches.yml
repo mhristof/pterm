@@ -1,0 +1,17 @@
+name: cleanup-branches
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: cleanup
+        uses: jessfraz/branch-cleanup-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
