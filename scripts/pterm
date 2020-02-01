@@ -4,10 +4,11 @@ import json
 import sys
 import os
 import configparser
-from difflib import unified_diff
+from difflib import Differ
 import tempfile
 import yaml
 import copy
+import pprint
 
 
 def main():
@@ -17,10 +18,25 @@ def main():
         description='Generates iterm2 dynamic profiles'
     )
 
+    parser.add_argument('--aws-config',
+                        default=os.path.expanduser('~/.aws/config'),
+                        help='aws config folder')
+
+    parser.add_argument('--dest',
+                        default=os.path.expanduser(
+                            "~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json"
+                        ),
+                        help='Destination file for the profiles')
+
+    parser.add_argument('--kube-config',
+                        default=os.path.expanduser("~/.kube/config"),
+                        help='kubectl configuration file')
+
     parser.add_argument('-d', '--diff',
                         action='store_true',
                         help='Print a diff to the current profiles')
     parser.add_argument('-n', '--dry-run',
+                        dest='dry',
                         action='store_true',
                         help='Dry run mode')
     parser.add_argument('-v', '--verbose',
@@ -30,36 +46,37 @@ def main():
 
     args = parser.parse_args()
 
-    aws_profiles = create_aws_profiles()
-    k8s_profiles = create_k8s_profiles()
+    if args.diff:
+        args.dry = True
+
+    aws_profiles = create_aws_profiles(args.aws_config)
+    k8s_profiles = create_k8s_profiles(args.kube_config, args.dry)
 
     profiles = {
         "Profiles": aws_profiles + k8s_profiles,
     }
 
-    dest = os.path.expanduser(
-        "~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json"
-    )
     if args.diff:
-        with open(dest) as input_:
-            current = json.load(input_)
-        sys.stdout.writelines(
-            unified_diff(
-                json.dumps(current, indent=4), json.dumps(profiles, indent=4)
-            )
-        )
-    elif args.dry_run:
+        current = [x.rstrip() for x in list(tuple(open(args.dest, 'r')))]
+        new = json.dumps(profiles, indent=4).split('\n')
+        d = Differ()
+        result = list(d.compare(current, new))
+        result = [x for x in result if x[0] != ' ']
+        if result:
+            pp = pprint.PrettyPrinter(width=200)
+            pp.pprint(result)
+    elif args.dry:
         print(json.dumps(profiles, indent=4))
     else:
-        with open(dest, "w") as out:
+        with open(args.dest, "w") as out:
             out.write(json.dumps(profiles, indent=4))
 
 
-def create_k8s_profiles():
+def create_k8s_profiles(kube_config, dry):
     """docstring for create_k8s_profiles"""
     user = os.getenv("USER")
 
-    with open(os.path.expanduser("~/.kube/config")) as file:
+    with open(os.path.expanduser(kube_config)) as file:
         config = yaml.full_load(file)
 
     clusters = [x['name'] for x in config['clusters']]
@@ -67,8 +84,12 @@ def create_k8s_profiles():
     profiles = []
     for cluster in clusters:
         this = carve_k8s_cluster(config, cluster)
-        cfg = os.path.expanduser(
-            f"~/.kube/config.{cluster.replace('/', '__')}.yml"
+        if not dry:
+            with open(cfg, "w") as out:
+                yaml.dump(this, out)
+        cfg = os.path.join(
+            os.path.dirname(kube_config),
+            f"config.{cluster.replace('/', '__')}.yml"
         )
         aws_profile = None
         try:
@@ -83,8 +104,6 @@ def create_k8s_profiles():
         except IndexError:
             pass
 
-        with open(cfg, "w") as out:
-            yaml.dump(this, out)
         new = create_profile(
             f'k8s-{cluster}',
             cmd=f"/usr/bin/env KUBECONFIG={cfg} AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
@@ -118,8 +137,8 @@ def carve_k8s_cluster(config, cluster):
     return new
 
 
-def create_aws_profiles():
-    aws_profiles = get_aws_profiles()
+def create_aws_profiles(aws_config):
+    aws_profiles = get_aws_profiles(aws_config)
 
     profiles = []
     for prof, account, role, loggin_for in aws_profiles:
@@ -174,9 +193,9 @@ def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
     return ret
 
 
-def get_aws_profiles():
+def get_aws_profiles(aws_config):
     config = configparser.ConfigParser()
-    config.read(os.path.expanduser('~/.aws/config'))
+    config.read(aws_config)
     ret = []
     loggin_profiles = {}
     for x in config.sections():
