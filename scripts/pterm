@@ -9,6 +9,7 @@ import tempfile
 import yaml
 import copy
 import pprint
+import iterm2
 
 
 def main():
@@ -27,6 +28,10 @@ def main():
                             "~/Library/Application Support/iTerm2/DynamicProfiles/aws-profiles.json"
                         ),
                         help='Destination file for the profiles')
+
+    parser.add_argument('-s', '--set-default',
+                        action='store_true',
+                        help='Help message')
 
     parser.add_argument('--kube-config',
                         default=os.path.expanduser("~/.kube/config"),
@@ -53,7 +58,10 @@ def main():
     k8s_profiles = create_k8s_profiles(args.kube_config, args.dry)
 
     profiles = {
-        "Profiles": aws_profiles + k8s_profiles,
+        "Profiles":
+            aws_profiles +
+            k8s_profiles +
+            [create_profile("pterm-default", change_title=True, badge=False)]
     }
 
     if args.diff:
@@ -70,6 +78,16 @@ def main():
     else:
         with open(args.dest, "w") as out:
             out.write(json.dumps(profiles, indent=4))
+    if args.set_default:
+        iterm2.run_until_complete(set_default)
+
+
+async def set_default(connection):
+    all_profiles = await iterm2.PartialProfile.async_query(connection)
+    for profile in all_profiles:
+        if profile.name == "pterm-default":
+            await profile.async_make_default()
+            return
 
 
 def create_k8s_profiles(kube_config, dry):
@@ -146,7 +164,7 @@ def create_aws_profiles(aws_config):
     return profiles
 
 
-def create_profile(name, cmd=None, change_title=False, tags=None):
+def create_profile(name, cmd=None, change_title=False, tags=None, badge=True):
     if tags is None:
         tags = []
 
@@ -158,14 +176,114 @@ def create_profile(name, cmd=None, change_title=False, tags=None):
         "Custom Window Title": name,
         "Allow Title Setting": change_title,
         "Tags": tags,
-        "Badge Text": name,
+        "Smart Selection Rules": smart_selection_rules(),
+        "Custom Directory": "Recycle",
+        "Flashing Bell": True,
+        "Silence Bell": True,
+        "Triggers": triggers(),
     }
+
+    if badge:
+        ret["Badge Text"] = name
 
     if cmd is not None:
         ret["Command"] = cmd
         ret["Custom Command"] = "Yes"
     return ret
 
+
+def triggers():
+    return [
+        {
+            "partial": True,
+            "parameter": "id_rsa",
+            "regex": f"^Enter passphrase for {os.getenv('HOME')}/.ssh/id_rsa",
+            "action": "PasswordTrigger"
+        },
+        {
+            "action": "PasswordTrigger",
+            "parameter": "macos",
+            "regex": "^Password: .input is hidden.",
+            "partial": True
+        }
+    ]
+
+
+def smart_selection_rules():
+    return [
+        {
+            "notes": "terraform aws resource",
+            "precision": "normal",
+            "regex": "resource \"aws_([a-zA-Z_]*)\"",
+            "actions": [
+                {
+                    "title": "open webpage",
+                    "action": 1,
+                    "parameter": r"https://www.terraform.io/docs/providers/aws/r/\1.html"
+                }
+            ]
+        },
+        {
+            "notes": "terraform aws data",
+            "precision": "normal",
+            "regex": "data \"aws_([a-zA-Z_]*)\"",
+            "actions": [
+                {
+                    "title": "open webpage",
+                    "action": 1,
+                    "parameter": r"https://www.terraform.io/docs/providers/aws/d/\1.html"
+                }
+            ]
+        },
+        {
+            "notes": "aws acm-pca",
+            "precision": "normal",
+            "regex": "arn:aws:acm-pca:([\w-]*):(\d*):certificate-authority/([\w-]*)",
+            "actions": [
+                {
+                    "title": "open webpage",
+                    "action": 1,
+                    "parameter": r"https://\1.console.aws.amazon.com/acm-pca/home?region=\1#/certificateAuthorities?arn=arn:aws:acm-pca:\1:\2:certificate-authority~2F\3",
+                }
+            ]
+        },
+        {
+            "notes": "aws iam-policy",
+            "precision": "normal",
+            "regex": "arn:aws:iam::(\d*):policy/([\w-]*)",
+            "actions": [
+                {
+                    "title": "open webpage",
+                    "action": 1,
+                    "parameter": r"https://console.aws.amazon.com/iam/home?#/policies/arn:aws:iam::\1:policy/\2$serviceLevelSummary",
+                }
+            ]
+        },
+        {
+            "notes": "aws iam-role",
+            "precision": "normal",
+            "regex": "arn:aws:iam::\d*:role/([\w-_]*)",
+            "actions": [
+                {
+                    "title": "open webpage",
+                    "action": 1,
+                    "parameter": r"https://console.aws.amazon.com/iam/home?#/roles/\1"
+                }
+            ]
+        },
+        {
+            "notes": "aws lambda",
+            "precision": "normal",
+            "regex": "arn:aws:lambda:([\w-]*):\d*:function:([\w-_]*)",
+            "actions": [
+                {
+                    "title": "open webpage",
+                    "action": 1,
+                    "parameter": r"https://\1.console.aws.amazon.com/lambda/home?region=\1#/functions/\2?tab=configuration",
+                }
+            ]
+        },
+    ]
 
 def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
     user = os.getenv("USER")
