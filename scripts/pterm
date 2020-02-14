@@ -84,13 +84,13 @@ def create_k8s_profiles(kube_config, dry):
     profiles = []
     for cluster in clusters:
         this = carve_k8s_cluster(config, cluster)
-        if not dry:
-            with open(cfg, "w") as out:
-                yaml.dump(this, out)
         cfg = os.path.join(
             os.path.dirname(kube_config),
             f"config.{cluster.replace('/', '__')}.yml"
         )
+        if not dry:
+            with open(cfg, "w") as out:
+                yaml.dump(this, out)
         aws_profile = None
         try:
             env = this['users'][0]['user']['exec']['env'][0]
