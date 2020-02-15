@@ -7,7 +7,7 @@ SHELL := bash
 
 
 .build: ./pterm/* scripts/pterm
-	docker build -t pytest .
+	docker build -t pterm .
 	touch .build
 
 pytest: .build
