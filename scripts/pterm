@@ -3,13 +3,14 @@
 import json
 import sys
 import os
-import configparser
 from difflib import Differ
 import tempfile
 import yaml
 import copy
 import pprint
 import iterm2
+
+from pterm import get_aws_profiles
 
 
 def main():
@@ -80,7 +81,6 @@ def main():
             out.write(json.dumps(profiles, indent=4))
     if args.set_default:
         iterm2.run_until_complete(set_default)
-
 
 async def set_default(connection):
     all_profiles = await iterm2.PartialProfile.async_query(connection)
@@ -162,8 +162,9 @@ def create_aws_profiles(aws_config):
     aws_profiles = get_aws_profiles(aws_config)
 
     profiles = []
-    for prof, account, role, loggin_for in aws_profiles:
-        profiles += [mkprofile(prof, account, role, loggin_for)]
+    for prof, account, role, source_profile, loggin_for in aws_profiles:
+        new = mkprofile(prof, account, role, loggin_for)
+        profiles += [new]
     return profiles
 
 
@@ -184,6 +185,7 @@ def create_profile(name, cmd=None, change_title=False, tags=None, badge=True):
         "Flashing Bell": True,
         "Silence Bell": True,
         "Triggers": triggers(),
+        "Keyboard Map": keybinds(),
     }
 
     if badge:
@@ -193,6 +195,21 @@ def create_profile(name, cmd=None, change_title=False, tags=None, badge=True):
         ret["Command"] = cmd
         ret["Custom Command"] = "Yes"
     return ret
+
+
+def keybinds():
+    return {
+        # cmd + shift + -
+        "0x5f-0x120000" : {
+            "Action" : 25,
+            "Text" : "Split Horizontally with Current Profile\nSplit Horizontally with Current Profile"
+        },
+        # cmd + shift + \
+        "0x7c-0x120000" : {
+            "Action" : 25,
+            "Text" : "Split Vertically with Current Profile\nSplit Vertically with Current Profile"
+        },
+    }
 
 
 def triggers():
@@ -311,30 +328,6 @@ def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
             "Alpha Component": 1,
             "Green Component": 0
         }
-    return ret
-
-
-def get_aws_profiles(aws_config):
-    config = configparser.ConfigParser()
-    config.read(aws_config)
-    ret = []
-    loggin_profiles = {}
-    for x in config.sections():
-        account_number = None
-        role = None
-        name = x.split()[1]
-        if 'role_arn' in config[x]:
-            account_number = config[x]['role_arn'].split(':')[4]
-            role = config[x]['role_arn'].split(':')[5]
-        if 'source_profile' in config[x]:
-            loggin_profiles[config[x]['source_profile']] = name
-        ret += [[name, account_number, role]]
-
-    for x in ret:
-        log = None
-        if x[0] in loggin_profiles.keys():
-            log = f'log-{loggin_profiles[x[0]]}'
-        x += [log]
     return ret
 
 

@@ -27,3 +27,5 @@ jobs:
       run: |
         pip install --user .
         pterm -h
+    - name: pytest
+      run: make pytest
