@@ -27,3 +27,7 @@ jobs:
       run: |
         pip install --user .
         pterm -h
+      env:
+        PATH: ~/.local/bin:$PATH
+    - name: pytest
+      run: make pytest
