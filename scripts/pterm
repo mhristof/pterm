@@ -94,6 +94,9 @@ def create_k8s_profiles(kube_config, dry):
     """docstring for create_k8s_profiles"""
     user = os.getenv("USER")
 
+    if not os.path.exists(kube_config):
+        return []
+
     with open(os.path.expanduser(kube_config)) as file:
         config = yaml.full_load(file)
 

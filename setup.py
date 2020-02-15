@@ -13,4 +13,5 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     python_requires='>=3.6',
     scripts=['scripts/pterm'],
+    install_requires=tuple(open('requirements.txt', 'r')),
 )
