@@ -11,6 +11,7 @@ import pprint
 import iterm2
 
 from pterm import get_aws_profiles
+from pterm import create_aws_profiles
 
 
 def main():
@@ -156,16 +157,6 @@ def carve_k8s_cluster(config, cluster):
     new['current-context'] = cluster
 
     return new
-
-
-def create_aws_profiles(aws_config):
-    aws_profiles = get_aws_profiles(aws_config)
-
-    profiles = []
-    for prof, account, role, source_profile, loggin_for in aws_profiles:
-        new = mkprofile(prof, account, role, loggin_for)
-        profiles += [new]
-    return profiles
 
 
 def create_profile(name, cmd=None, change_title=False, tags=None, badge=True):

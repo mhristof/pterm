@@ -2,6 +2,7 @@
 
 import configparser
 
+
 def get_aws_profiles(aws_config):
     config = configparser.ConfigParser()
     config.read(aws_config)
@@ -24,5 +25,16 @@ def get_aws_profiles(aws_config):
             log = f'log-{loggin_profiles[x[0]]}'
         x += [log]
     return ret
+
+
+def create_aws_profiles(aws_config):
+    aws_profiles = get_aws_profiles(aws_config)
+
+    profiles = []
+    for prof, account, role, loggin_for in aws_profiles:
+        new = mkprofile(prof, account, role, loggin_for)
+        profiles += [new]
+    return profiles
+
 
 

@@ -9,6 +9,7 @@ def create_config(contents):
     temp.write(contents)
     return temp.name
 
+
 def test_get_aws_profiles():
     cases = [
         (
@@ -39,9 +40,19 @@ def test_get_aws_profiles():
             ],
         )
     ]
-    
+
     for case, result in cases:
         config = get_aws_profiles(create_config(case))
         assert result == config
 
 
+def test_create_aws_profiles():
+    cases = [
+        (
+            '''
+            [profile 1]
+            ''',
+        ),
+    ]
+    for case in cases:
+        _ = create_aws_profiles(create_config(case))
