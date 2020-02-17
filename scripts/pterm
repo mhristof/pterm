@@ -12,6 +12,7 @@ import iterm2
 
 from pterm import get_aws_profiles
 from pterm import create_aws_profiles
+from pterm import create_profile
 
 
 def main():
