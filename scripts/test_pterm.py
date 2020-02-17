@@ -17,7 +17,7 @@ def test_get_aws_profiles():
             '''
             [profile 1]
             ''',
-            [['1', None, None, None]],
+            [['1', None, None, None, None]],
         ),
         (
             '''
@@ -25,7 +25,7 @@ def test_get_aws_profiles():
             role_arn = arn:partition:service:region:account:resource
             ''',
             [
-                ['2', 'account', 'resource', None]
+                ['2', 'account', 'resource', None, None]
             ],
         ),
         (
@@ -36,8 +36,8 @@ def test_get_aws_profiles():
             source_profile = 3
             ''',
             [
-                ['3', None, None, 'log-4'],
-                ['4', None, None, None]
+                ['3', None, None, None, 'log-4'],
+                ['4', None, None, '3', None]
             ],
         )
     ]

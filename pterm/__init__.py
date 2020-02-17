@@ -13,12 +13,14 @@ def get_aws_profiles(aws_config):
         account_number = None
         role = None
         name = x.split()[1]
+        source_profile = None
         if 'role_arn' in config[x]:
             account_number = config[x]['role_arn'].split(':')[4]
             role = config[x]['role_arn'].split(':')[5]
         if 'source_profile' in config[x]:
             loggin_profiles[config[x]['source_profile']] = name
-        ret += [[name, account_number, role]]
+            source_profile = config[x]['source_profile']
+        ret += [[name, account_number, role, source_profile]]
 
     for x in ret:
         log = None
@@ -32,19 +34,26 @@ def create_aws_profiles(aws_config):
     aws_profiles = get_aws_profiles(aws_config)
 
     profiles = []
-    for prof, account, role, loggin_for in aws_profiles:
-        new = mkprofile(prof, account, role, loggin_for)
+    for prof, account, role, source_profile, loggin_for in aws_profiles:
+        new = mkprofile(prof, account, role, source_profile, loggin_for)
         profiles += [new]
     return profiles
 
 
-def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
+def mkprofile(aws_profile, account=None, role=None, source_profile=None, loggin_for=None):
     user = os.getenv("USER")
     ret = create_profile(
         aws_profile,
         cmd=f"/usr/bin/env AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
         change_title=False,
     )
+
+    if source_profile is not None:
+        # alt + a
+        ret['Keyboard Map']["0x61-0x80000"] = {
+            "Action" : 28,
+            "Text" : source_profile,
+        }
 
     if account is not None:
         ret['Tags'] += [account]
@@ -61,6 +70,7 @@ def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
             "Alpha Component": 1,
             "Green Component": 0
         }
+
     return ret
 
 

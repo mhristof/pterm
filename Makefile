@@ -11,7 +11,7 @@ SHELL := bash
 	touch .build
 
 pytest: .build
-	docker run -v $(PWD)/scripts/test_pterm.py:/work/scripts/test_pterm.py pterm
+	docker run -it -v $(PWD)/scripts/test_pterm.py:/work/scripts/test_pterm.py pterm
 
 all:
 	@echo "Makefile needs your attention"
