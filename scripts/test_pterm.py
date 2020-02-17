@@ -2,6 +2,7 @@
 
 import tempfile
 from pterm import get_aws_profiles
+from pterm import create_aws_profiles
 
 
 def create_config(contents):
