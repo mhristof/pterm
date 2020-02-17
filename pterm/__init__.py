@@ -37,4 +37,31 @@ def create_aws_profiles(aws_config):
     return profiles
 
 
+def mkprofile(aws_profile, account=None, role=None, loggin_for=None):
+    user = os.getenv("USER")
+    ret = create_profile(
+        aws_profile,
+        cmd=f"/usr/bin/env AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
+        change_title=False,
+    )
+
+    if account is not None:
+        ret['Tags'] += [account]
+    if role is not None:
+        ret['Tags'] += [role]
+    if loggin_for is not None:
+        ret['Tags'] += [loggin_for]
+
+    if 'prod' in aws_profile:
+        ret["Background Color"] = {
+            "Red Component": 0.217376708984375,
+            "Color Space": "sRGB",
+            "Blue Component": 0,
+            "Alpha Component": 1,
+            "Green Component": 0
+        }
+    return ret
+
+
+
 
