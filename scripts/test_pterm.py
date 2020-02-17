@@ -52,7 +52,7 @@ def test_create_aws_profiles():
         (
             '''
             [profile 1]
-            ''',
+            '''
         ),
     ]
     for case in cases:
