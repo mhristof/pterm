@@ -48,12 +48,20 @@ def test_get_aws_profiles():
 
 
 def test_create_aws_profiles():
-    cases = [
-        (
-            '''
+    case = '''
             [profile 1]
+           '''
+    profiles = create_aws_profiles(create_config(case))
+    names = [x['Name'] for x in profiles]
+    assert names == list(set(names))
+
+    case = '''
+            [profile 2]
+            [profile 3]
+            source_profile = 2
             '''
-        ),
-    ]
-    for case in cases:
-        _ = create_aws_profiles(create_config(case))
+    profiles = create_aws_profiles(create_config(case))
+    assert profiles[0]['Name'] == '2'
+    assert profiles[1]['Name'] == 'login-2'
+    assert 'aws-azure-login' in profiles[1]['Command']
+    assert profiles[2]['Name'] == '3'
