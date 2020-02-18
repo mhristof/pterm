@@ -123,7 +123,7 @@ def triggers():
         {
             "partial": True,
             "parameter": "id_rsa",
-            "regex": f"^Enter passphrase for {os.getenv('HOME')}/.ssh/id_rsa",
+            "regex": f"^Enter passphrase for key {os.getenv('HOME')}/.ssh/id_rsa",
             "action": "PasswordTrigger"
         },
         {
