@@ -2,6 +2,7 @@
 
 import configparser
 import os
+from copy import deepcopy
 
 
 def get_aws_profiles(aws_config):
@@ -34,9 +35,17 @@ def create_aws_profiles(aws_config):
     aws_profiles = get_aws_profiles(aws_config)
 
     profiles = []
+    login_profile = {}
     for prof, account, role, source_profile, loggin_for in aws_profiles:
         new = mkprofile(prof, account, role, source_profile, loggin_for)
         profiles += [new]
+        if loggin_for is not None:
+            new = deepcopy(new)
+            name = new['Name']
+            new['Name'] = f'login-{name}'
+            new['Guid'] = f'login-{name}'
+            new["Command"] = '/usr/bin/env AWS_PROFILE={prof} aws-azure-login --no-prompt'
+            profiles += [new]
     return profiles
 
 
