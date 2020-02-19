@@ -84,6 +84,7 @@ def main():
     if args.set_default:
         iterm2.run_until_complete(set_default)
 
+
 async def set_default(connection):
     all_profiles = await iterm2.PartialProfile.async_query(connection)
     for profile in all_profiles:

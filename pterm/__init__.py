@@ -3,6 +3,7 @@
 import configparser
 import os
 from copy import deepcopy
+import shutil
 
 
 def get_aws_profiles(aws_config):
@@ -44,7 +45,7 @@ def create_aws_profiles(aws_config):
             name = new['Name']
             new['Name'] = f'login-{name}'
             new['Guid'] = f'login-{name}'
-            new["Command"] = '/usr/bin/env AWS_PROFILE={prof} aws-azure-login --no-prompt'
+            new["Command"] = '/usr/bin/env AWS_PROFILE={prof} {shutil.which("aws-azure-login")} --no-prompt'
             profiles += [new]
     return profiles
 
@@ -60,8 +61,8 @@ def mkprofile(aws_profile, account=None, role=None, source_profile=None, loggin_
     if source_profile is not None:
         # alt + a
         ret['Keyboard Map']["0x61-0x80000"] = {
-            "Action" : 28,
-            "Text" : source_profile,
+            "Action": 28,
+            "Text": f'login-{source_profile}',
         }
 
     if account is not None:
