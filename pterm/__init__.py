@@ -46,7 +46,11 @@ def create_aws_profiles(aws_config):
             new['Name'] = f'login-{name}'
             new['Guid'] = f'login-{name}'
             azure_path = os.path.dirname(shutil.which('aws-azure-login'))
-            new["Command"] = f"bash -c 'PATH={azure_path} AWS_PROFILE={prof} aws-azure-login --no-prompt'"
+            envs = f"PATH={azure_path} AWS_PROFILE={prof}"
+            node_env = os.getenv('NODE_EXTRA_CA_CERTS', None)
+            if node_env is not None:
+                envs += f" NODE_EXTRA_CA_CERTS={node_env}"
+            new["Command"] = f"bash -c '{envs} aws-azure-login --no-prompt || sleep 60'"
             profiles += [new]
     return profiles
 
