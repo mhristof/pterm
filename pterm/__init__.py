@@ -45,7 +45,8 @@ def create_aws_profiles(aws_config):
             name = new['Name']
             new['Name'] = f'login-{name}'
             new['Guid'] = f'login-{name}'
-            new["Command"] = f'/usr/bin/env AWS_PROFILE={prof} {shutil.which("aws-azure-login")} --no-prompt'
+            azure_path = os.path.dirname(shutil.which('aws-azure-login'))
+            new["Command"] = f"bash -c 'PATH={azure_path} AWS_PROFILE={prof} aws-azure-login --no-prompt'"
             profiles += [new]
     return profiles
 
