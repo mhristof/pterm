@@ -39,16 +39,7 @@ def test_get_aws_profiles():
                 ['3', None, None, None, False, 'log-4'],
                 ['4', None, None, '3', False, None]
             ],
-        )
-        (
-            '''
-            [profile 5]
-            azure_tenant_id=foobar
-            ''',
-            [
-                ['5', None, None, None, True, None],
-            ],
-        )
+        ),
     ]
 
     for case, result in cases:
@@ -80,6 +71,10 @@ def test_create_aws_profiles():
             [profile 5]
             source_profile = 4
             '''
-    profiles = create_aws_profiles(create_config(case))
+    profiles = create_aws_profiles(create_config(case), azure_path)
     assert profiles[1]['Name'] == 'login-4'
     assert 'aws-azure-login' in profiles[1]['Command']
+
+
+def azure_path():
+    return '/some/path'
