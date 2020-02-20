@@ -17,7 +17,7 @@ def test_get_aws_profiles():
             '''
             [profile 1]
             ''',
-            [['1', None, None, None, None]],
+            [['1', None, None, None, False, None]],
         ),
         (
             '''
@@ -25,7 +25,7 @@ def test_get_aws_profiles():
             role_arn = arn:partition:service:region:account:resource
             ''',
             [
-                ['2', 'account', 'resource', None, None]
+                ['2', 'account', 'resource', None, False, None]
             ],
         ),
         (
@@ -36,8 +36,17 @@ def test_get_aws_profiles():
             source_profile = 3
             ''',
             [
-                ['3', None, None, None, 'log-4'],
-                ['4', None, None, '3', None]
+                ['3', None, None, None, False, 'log-4'],
+                ['4', None, None, '3', False, None]
+            ],
+        )
+        (
+            '''
+            [profile 5]
+            azure_tenant_id=foobar
+            ''',
+            [
+                ['5', None, None, None, True, None],
             ],
         )
     ]
@@ -63,5 +72,14 @@ def test_create_aws_profiles():
     profiles = create_aws_profiles(create_config(case))
     assert profiles[0]['Name'] == '2'
     assert profiles[1]['Name'] == 'login-2'
-    assert 'aws-azure-login' in profiles[1]['Command']
     assert profiles[2]['Name'] == '3'
+
+    case = '''
+            [profile 4]
+            azure_tenant_id = foobar
+            [profile 5]
+            source_profile = 4
+            '''
+    profiles = create_aws_profiles(create_config(case))
+    assert profiles[1]['Name'] == 'login-4'
+    assert 'aws-azure-login' in profiles[1]['Command']

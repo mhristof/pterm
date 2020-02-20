@@ -16,13 +16,16 @@ def get_aws_profiles(aws_config):
         role = None
         name = x.split()[1]
         source_profile = None
+        azure = False
         if 'role_arn' in config[x]:
             account_number = config[x]['role_arn'].split(':')[4]
             role = config[x]['role_arn'].split(':')[5]
         if 'source_profile' in config[x]:
             loggin_profiles[config[x]['source_profile']] = name
             source_profile = config[x]['source_profile']
-        ret += [[name, account_number, role, source_profile]]
+        if 'azure_tenant_id' in config[x]:
+            azure = True
+        ret += [[name, account_number, role, source_profile, azure]]
 
     for x in ret:
         log = None
@@ -37,20 +40,24 @@ def create_aws_profiles(aws_config):
 
     profiles = []
     login_profile = {}
-    for prof, account, role, source_profile, loggin_for in aws_profiles:
+    for prof, account, role, source_profile, azure, loggin_for in aws_profiles:
         new = mkprofile(prof, account, role, source_profile, loggin_for)
+        if azure:
+            new['Tags'] += ['azure']
         profiles += [new]
         if loggin_for is not None:
             new = deepcopy(new)
             name = new['Name']
             new['Name'] = f'login-{name}'
             new['Guid'] = f'login-{name}'
-            azure_path = os.path.dirname(shutil.which('aws-azure-login'))
-            envs = f"PATH={azure_path} AWS_PROFILE={prof}"
+            envs = [f'AWS_PROFILE={prof}']
+            if azure:
+                azure_path = os.path.dirname(shutil.which('aws-azure-login'))
+                envs += [f'PATH={azure_path}']
             node_env = os.getenv('NODE_EXTRA_CA_CERTS', None)
             if node_env is not None:
-                envs += f" NODE_EXTRA_CA_CERTS={node_env}"
-            new["Command"] = f"bash -c '{envs} aws-azure-login --no-prompt || sleep 60'"
+                envs += [f"NODE_EXTRA_CA_CERTS={node_env}"]
+            new["Command"] = f"bash -c '{' '.join(envs)} aws-azure-login --no-prompt || sleep 60'"
             profiles += [new]
     return profiles
 
