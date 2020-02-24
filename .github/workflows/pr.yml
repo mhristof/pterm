@@ -10,9 +10,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    - id: log
+      run: echo "::set-output name=message::$(git log --no-merges -1 --oneline)"
     - name: Create PR
       uses: funivan/github-autopr@0.2.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        args: .head_commit.message
+        args: ${{ steps.log.outputs.message }}
