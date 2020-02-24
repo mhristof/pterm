@@ -36,7 +36,7 @@ def get_aws_profiles(aws_config):
 
 
 def aws_azure_login_path():
-    azure_path = os.path.dirname(shutil.which('aws-azure-login'))
+    return os.path.dirname(shutil.which('aws-azure-login'))
 
 
 def create_aws_profiles(aws_config, azure_path=None):
@@ -58,8 +58,8 @@ def create_aws_profiles(aws_config, azure_path=None):
             new['Guid'] = f'login-{name}'
             envs = [f'AWS_PROFILE={prof}']
             if azure:
-                azure_path = azure_path()
-                envs += [f'PATH={azure_path}']
+                path = azure_path()
+                envs += [f'PATH={path}']
             node_env = os.getenv('NODE_EXTRA_CA_CERTS', None)
             if node_env is not None:
                 envs += [f"NODE_EXTRA_CA_CERTS={node_env}"]
