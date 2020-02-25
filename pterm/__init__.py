@@ -151,10 +151,6 @@ def triggers():
         {
             "partial": True,
             "parameter": "id_rsa",
-            # if you do a git push, the messages is
-            # Enter passphrase for key 'blah
-            # if you do a ssh-add, the message is 
-            # Enter passphrase for blah
             "regex": f"^Enter passphrase for (key ')?{os.getenv('HOME')}/.ssh/id_rsa",
             "action": "PasswordTrigger"
         },

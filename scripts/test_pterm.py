@@ -3,6 +3,9 @@
 import tempfile
 from pterm import get_aws_profiles
 from pterm import create_aws_profiles
+from pterm import triggers
+import re
+import os
 
 
 def create_config(contents):
@@ -74,6 +77,23 @@ def test_create_aws_profiles():
     profiles = create_aws_profiles(create_config(case), azure_path)
     assert profiles[1]['Name'] == 'login-4'
     assert 'aws-azure-login' in profiles[1]['Command']
+
+
+def test_triggers():
+    id_rsa_re = [
+        x for x in triggers()
+        if x['parameter'] == 'id_rsa'
+    ][0]['regex']
+
+    cases = [
+        # when git push
+        f"Enter passphrase for key '{os.getenv('HOME')}/.ssh/id_rsa",
+        # when ssh-add
+        f"Enter passphrase for {os.getenv('HOME')}/.ssh/id_rsa",
+    ]
+
+    for case in cases:
+        assert re.search(id_rsa_re, case) is not None
 
 
 def azure_path():
