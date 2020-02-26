@@ -13,6 +13,7 @@ import iterm2
 from pterm import get_aws_profiles
 from pterm import create_aws_profiles
 from pterm import create_profile
+from pterm import sort_aws_config
 
 
 def main():
@@ -32,13 +33,17 @@ def main():
                         ),
                         help='Destination file for the profiles')
 
-    parser.add_argument('-s', '--set-default',
+    parser.add_argument('--set-default',
                         action='store_true',
                         help='Help message')
 
     parser.add_argument('--kube-config',
                         default=os.path.expanduser("~/.kube/config"),
                         help='kubectl configuration file')
+
+    parser.add_argument('-s', '--sort',
+                        action='store_true',
+                        help='Sort the aws config')
 
     parser.add_argument('-d', '--diff',
                         action='store_true',
@@ -56,6 +61,9 @@ def main():
 
     if args.diff:
         args.dry = True
+
+    if args.sort:
+        sort_aws_config(args.aws_config, args.dry)
 
     aws_profiles = create_aws_profiles(args.aws_config)
     k8s_profiles = create_k8s_profiles(args.kube_config, args.dry)

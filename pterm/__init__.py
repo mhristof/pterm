@@ -4,6 +4,37 @@ import configparser
 import os
 from copy import deepcopy
 import shutil
+import collections
+import difflib
+import tempfile
+
+
+def sort_aws_config(path, dry):
+    config = configparser.ConfigParser({}, collections.OrderedDict)
+    config.read(path)
+
+    for section in config._sections:
+        config._sections[section] = collections.OrderedDict(
+            sorted(config._sections[section].items(), key=lambda t: t[0])
+        )
+
+    # Order all sections alphabetically
+    config._sections = collections.OrderedDict(
+        sorted(config._sections.items(), key=lambda t: t[0])
+    )
+
+    if dry:
+        new_config = tempfile.NamedTemporaryFile()
+        with open(new_config.name, 'w') as out:
+            config.write(out)
+        diff = difflib.unified_diff(
+            [x.strip() for x in tuple(open(path, 'r'))],
+            [x.strip() for x in tuple(open(new_config.name, 'r'))]
+        )
+        print('\n'.join(diff))
+        return
+    with open(path, 'w') as out:
+        config.write(out)
 
 
 def get_aws_profiles(aws_config):
