@@ -9,7 +9,7 @@ import difflib
 import tempfile
 
 
-def sort_aws_config(path, dry):
+def sort_aws_config(path, dry=False):
     config = configparser.ConfigParser({}, collections.OrderedDict)
     config.read(path)
 

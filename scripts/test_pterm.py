@@ -3,6 +3,7 @@
 import tempfile
 from pterm import get_aws_profiles
 from pterm import create_aws_profiles
+from pterm import sort_aws_config
 
 
 def create_config(contents):
@@ -78,3 +79,22 @@ def test_create_aws_profiles():
 
 def azure_path():
     return '/some/path'
+
+
+def test_sort_aws_config():
+    case = '''
+        [profile b]
+        [profile a]
+        [profile c]
+    '''
+
+    config = create_config(case)
+    sort_aws_config(config)
+
+    new_config = [
+        x.rstrip() for x in tuple(open(config, 'r')) if x.rstrip()
+    ]
+    expected = sorted(
+        [x.strip() for x in case.split('\n') if x.strip()]
+    )
+    assert new_config == expected
