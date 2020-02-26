@@ -98,3 +98,20 @@ def test_sort_aws_config():
         [x.strip() for x in case.split('\n') if x.strip()]
     )
     assert new_config == expected
+
+
+def test_sort_aws_config_dry():
+    case = '''
+        [profile b]
+        [profile a]
+        [profile c]
+    '''
+    config = create_config(case)
+    sort_aws_config(config, dry=True)
+
+    new_config = [
+        x.strip() for x in tuple(open(config, 'r')) if x.strip()
+    ]
+    expected = [x.strip() for x in case.split('\n') if x.strip()]
+
+    assert new_config == expected
