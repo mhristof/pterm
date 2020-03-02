@@ -10,10 +10,10 @@ import copy
 import pprint
 import iterm2
 
-from pterm import get_aws_profiles
 from pterm import create_aws_profiles
 from pterm import create_profile
 from pterm import sort_aws_config
+from pterm import create_k8s_profile
 
 
 def main():
@@ -66,7 +66,7 @@ def main():
         sort_aws_config(args.aws_config, args.dry)
 
     aws_profiles = create_aws_profiles(args.aws_config)
-    k8s_profiles = create_k8s_profiles(args.kube_config, args.dry)
+    k8s_profiles = create_k8s_profiles(args.kube_config, aws_profiles, args.dry)
 
     profiles = {
         "Profiles":
@@ -101,7 +101,7 @@ async def set_default(connection):
             return
 
 
-def create_k8s_profiles(kube_config, dry):
+def create_k8s_profiles(kube_config, aws_profiles, dry):
     """docstring for create_k8s_profiles"""
     user = os.getenv("USER")
 
@@ -123,32 +123,7 @@ def create_k8s_profiles(kube_config, dry):
         if not dry:
             with open(cfg, "w") as out:
                 yaml.dump(this, out)
-        aws_profile = None
-        try:
-            env = this['users'][0]['user']['exec']['env'][0]
-            if env['name'] != 'AWS_PROFILE':
-                pass
-            aws_profile = env['value']
-        except KeyError:
-            pass
-        except TypeError:
-            pass
-        except IndexError:
-            pass
-
-        new = create_profile(
-            f'k8s-{cluster}',
-            cmd=f"/usr/bin/env KUBECONFIG={cfg} AWS_PROFILE={aws_profile} /usr/bin/login -fp {user}",
-            change_title=False,
-            tags=['k8s'],
-        )
-        new["Background Color"] = {
-            "Red Component": 0,
-            "Color Space": "sRGB",
-            "Blue Component": 0.38311767578125,
-            "Alpha Component": 1,
-            "Green Component": 0
-        }
+        new = create_k8s_profile(this, cfg, aws_profiles)
         profiles += [new]
     return profiles
 
@@ -167,7 +142,6 @@ def carve_k8s_cluster(config, cluster):
     new['current-context'] = cluster
 
     return new
-
 
 
 if __name__ == '__main__':

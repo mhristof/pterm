@@ -37,32 +37,24 @@ def sort_aws_config(path, dry=False):
         config.write(out)
 
 
-def get_aws_profiles(aws_config):
+def aws_config_to_profiles(aws_config):
     config = configparser.ConfigParser()
     config.read(aws_config)
-    ret = []
+    ret = {}
     loggin_profiles = {}
     for x in config.sections():
-        account_number = None
-        role = None
-        name = x.split()[1]
-        source_profile = None
-        azure = False
+        new = {
+            'name': x.split()[1],
+            'account': None,
+            'role': None,
+            'azure': config[x].get('azure_tenant_id', None) is not None,
+            'source_profile': config[x].get('source_profile', None),
+        }
         if 'role_arn' in config[x]:
-            account_number = config[x]['role_arn'].split(':')[4]
-            role = config[x]['role_arn'].split(':')[5]
-        if 'source_profile' in config[x]:
-            loggin_profiles[config[x]['source_profile']] = name
-            source_profile = config[x]['source_profile']
-        if 'azure_tenant_id' in config[x]:
-            azure = True
-        ret += [[name, account_number, role, source_profile, azure]]
+            new['account'] = config[x]['role_arn'].split(':')[4]
+            new['role'] = config[x]['role_arn'].split(':')[5]
+        ret[new['name']] = new
 
-    for x in ret:
-        log = None
-        if x[0] in loggin_profiles.keys():
-            log = f'log-{loggin_profiles[x[0]]}'
-        x += [log]
     return ret
 
 
@@ -73,33 +65,50 @@ def aws_azure_login_path():
 def create_aws_profiles(aws_config, azure_path=None):
     if azure_path is None:
         azure_path = aws_azure_login_path
-    aws_profiles = get_aws_profiles(aws_config)
+    aws_profiles = aws_config_to_profiles(aws_config)
 
     profiles = []
     login_profile = {}
-    for prof, account, role, source_profile, azure, loggin_for in aws_profiles:
-        new = mkprofile(prof, account, role, source_profile, loggin_for)
-        if azure:
-            new['Tags'] += ['azure']
+    for name, profile in aws_profiles.items():
+        new = mkprofile(
+            profile['name'],
+            source_profile=profile['source_profile'],
+            tags=[
+                profile['account'],
+                profile['role'],
+                profile['source_profile']
+            ],
+        )
         profiles += [new]
-        if loggin_for is not None:
-            new = deepcopy(new)
-            name = new['Name']
-            new['Name'] = f'login-{name}'
-            new['Guid'] = f'login-{name}'
-            envs = [f'AWS_PROFILE={prof}']
-            if azure:
-                path = azure_path()
-                envs += [f'PATH={path}']
-            node_env = os.getenv('NODE_EXTRA_CA_CERTS', None)
-            if node_env is not None:
-                envs += [f"NODE_EXTRA_CA_CERTS={node_env}"]
-            new["Command"] = f"bash -c '{' '.join(envs)} aws-azure-login --no-prompt || sleep 60'"
-            profiles += [new]
+
+    for name, profile in aws_profiles.items():
+        source_profile = profile.get("source_profile", None)
+        if source_profile is None:
+            continue
+        new = mkprofile(
+            f'login-{source_profile}'
+        )
+        envs = [f'AWS_PROFILE={source_profile}']
+        if aws_profiles[source_profile].get('azure', False):
+            path = azure_path()
+            envs += [f'PATH={path}']
+        node_env = os.getenv('NODE_EXTRA_CA_CERTS', None)
+        if node_env is not None:
+            envs += [f"NODE_EXTRA_CA_CERTS={node_env}"]
+        new["Command"] = f"bash -c '{' '.join(envs)} aws-azure-login --no-prompt || sleep 60'"
+        profiles += [new]
     return profiles
 
 
-def mkprofile(aws_profile, account=None, role=None, source_profile=None, loggin_for=None):
+def alt_a_split_profile(dictionary, profile):
+    dictionary['Keyboard Map']["0x61-0x80000"] = {
+        "Action": 28,
+        "Text": profile,
+    }
+    return dictionary
+
+
+def mkprofile(aws_profile, account=None, role=None, source_profile=None, tags=None):
     user = os.getenv("USER")
     ret = create_profile(
         aws_profile,
@@ -108,18 +117,15 @@ def mkprofile(aws_profile, account=None, role=None, source_profile=None, loggin_
     )
 
     if source_profile is not None:
-        # alt + a
-        ret['Keyboard Map']["0x61-0x80000"] = {
-            "Action": 28,
-            "Text": f'login-{source_profile}',
-        }
+        alt_a_split_profile(ret, f'login-{source_profile}')
+        ret['Tags'] += [f'source_profile_{source_profile}']
 
     if account is not None:
         ret['Tags'] += [account]
     if role is not None:
         ret['Tags'] += [role]
-    if loggin_for is not None:
-        ret['Tags'] += [loggin_for]
+    if tags is not None:
+        ret['Tags'] += [x for x in tags if x]
 
     if 'prod' in aws_profile:
         ret["Background Color"] = {
@@ -269,6 +275,64 @@ def smart_selection_rules():
             ]
         },
     ]
+
+
+def create_k8s_profile(this, cfg, aws_profiles):
+    user = os.getenv("USER")
+    aws_profile = None
+    cluster = this['current-context']
+    cmd = [
+        "/usr/bin/env",
+        f"KUBECONFIG={cfg}",
+    ]
+    try:
+        env = this['users'][0]['user']['exec']['env'][0]
+        if env['name'] != 'AWS_PROFILE':
+            pass
+        aws_profile = env['value']
+    except KeyError:
+        pass
+    except TypeError:
+        pass
+    except IndexError:
+        pass
+
+    if aws_profile is not None:
+        aws_profile_tags = [
+            x for x in aws_profiles
+            if x['Name'] == aws_profile
+        ][0]['Tags']
+        source_profile = [
+            x.replace('source_profile_', '')
+            for x in aws_profile_tags
+            if x is not None and x.startswith('source_profile_')
+        ][0]
+        cmd += [f'AWS_PROFILE={aws_profile}']
+
+    cmd += [
+        '/usr/bin/login',
+        '-fp',
+        f'{user}',
+    ]
+
+    new = create_profile(
+        f'k8s-{cluster}',
+        cmd=' '.join(cmd),
+        change_title=False,
+        tags=['k8s'],
+    )
+
+    if source_profile is not None:
+        new = alt_a_split_profile(new, f'login-{source_profile}')
+
+    new["Background Color"] = {
+        "Red Component": 0,
+        "Color Space": "sRGB",
+        "Blue Component": 0.38311767578125,
+        "Alpha Component": 1,
+        "Green Component": 0
+    }
+    return new
 
 
 
