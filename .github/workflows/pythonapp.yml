@@ -31,3 +31,9 @@ jobs:
         PATH: ~/.local/bin:$PATH
     - name: pytest
       run: make pytest
+    - name: install vault
+      run: |
+        wget https://releases.hashicorp.com/vault/1.3.2/vault_1.3.2_linux_amd64.zip -O vault.zip
+        unzip vault.zip
+    - name: pytest with Vault
+      run: PATH=$PWD:$PATH make pytest

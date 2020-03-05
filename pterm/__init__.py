@@ -8,6 +8,12 @@ import collections
 import difflib
 import tempfile
 
+has_vault = True
+try:
+    from sh import vault
+except ImportError:
+    has_vault = False
+
 
 def sort_aws_config(path, dry=False):
     config = configparser.ConfigParser({}, collections.OrderedDict)
@@ -59,7 +65,11 @@ def aws_config_to_profiles(aws_config):
 
 
 def aws_azure_login_path():
-    return os.path.dirname(shutil.which('aws-azure-login'))
+    return which('aws-azure-login')
+
+
+def which(exe):
+    return os.path.dirname(shutil.which(exe))
 
 
 def create_aws_profiles(aws_config, azure_path=None):
@@ -171,14 +181,14 @@ def create_profile(name, cmd=None, change_title=False, tags=None, badge=True):
 def keybinds():
     return {
         # cmd + shift + -
-        "0x5f-0x120000" : {
-            "Action" : 25,
-            "Text" : "Split Horizontally with Current Profile\nSplit Horizontally with Current Profile"
+        "0x5f-0x120000": {
+            "Action": 25,
+            "Text": "Split Horizontally with Current Profile\nSplit Horizontally with Current Profile"
         },
         # cmd + shift + \
-        "0x7c-0x120000" : {
-            "Action" : 25,
-            "Text" : "Split Vertically with Current Profile\nSplit Vertically with Current Profile"
+        "0x7c-0x120000": {
+            "Action": 25,
+            "Text": "Split Vertically with Current Profile\nSplit Vertically with Current Profile"
         },
     }
 
@@ -335,4 +345,38 @@ def create_k8s_profile(this, cfg, aws_profiles):
     return new
 
 
+def create_vault_profile(name):
+    if not has_vault:
+        return {}
+    new = create_profile(
+        name,
+        change_title=False,
+        badge=True,
+        cmd=f"/bin/bash -c 'PATH={which('vault')} vault server -dev'",
+        tags=vault(
+            '--version', _env={'VAULT_CLI_NO_COLOR': "true"}
+        ).strip().split()
+    )
+    new['Smart Selection Rules'] = [
+        {
+            "notes": "root token",
+            "precision": "very_high",
+            "regex": "^Root Token: (.*)",
+            "actions": [
+                {
+                    "title": "copy export vault token to clipboard",
+                    "action": 3,
+                    "parameter": r"~/bin/create-export-vault-token.sh \1",
+                }
+            ]
+        }
+    ]
 
+    new['Keyboard Map'] = {
+        "0x77-0x100000": {
+            "Action": 12,
+            "Text": "Control-w is disabled, please use Control-c to close this tab"
+        }
+    }
+
+    return new

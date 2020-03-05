@@ -14,6 +14,7 @@ from pterm import create_aws_profiles
 from pterm import create_profile
 from pterm import sort_aws_config
 from pterm import create_k8s_profile
+from pterm import create_vault_profile
 
 
 def main():
@@ -66,13 +67,19 @@ def main():
         sort_aws_config(args.aws_config, args.dry)
 
     aws_profiles = create_aws_profiles(args.aws_config)
-    k8s_profiles = create_k8s_profiles(args.kube_config, aws_profiles, args.dry)
+    k8s_profiles = create_k8s_profiles(
+        args.kube_config, aws_profiles, args.dry
+    )
+    extra_profiles = [
+        create_profile("pterm-default", change_title=True, badge=False),
+        create_vault_profile('vault-server-dev'),
+    ]
 
     profiles = {
         "Profiles":
             aws_profiles +
             k8s_profiles +
-            [create_profile("pterm-default", change_title=True, badge=False)]
+            extra_profiles
     }
 
     if args.diff:
