@@ -8,7 +8,7 @@ setuptools.setup(
     author="Mike Christof",
     author_email="mhristof@gmail.com",
     description="Setup iterm2",
-    long_description=tuple(open('README.md', 'r'))
+    long_description='\n'.join(tuple(open('README.md', 'r'))),
     long_description_content_type="text/markdown",
     url="https://github.com/mhristof/pterm",
     packages=setuptools.find_packages(),

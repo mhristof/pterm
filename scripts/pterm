@@ -15,6 +15,7 @@ from pterm import create_profile
 from pterm import sort_aws_config
 from pterm import create_k8s_profile
 from pterm import create_vault_profile
+from pterm import version
 
 
 def main():
@@ -57,6 +58,7 @@ def main():
                         action='count',
                         default=0,
                         help='Increase verbosity')
+    parser.add_argument('--version', action='version', version='%(prog)s ' + version.__version__)
 
     args = parser.parse_args()
 

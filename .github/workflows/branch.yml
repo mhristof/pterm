@@ -16,7 +16,7 @@ jobs:
           ignore: master
       - uses: actions/checkout@v1
       - name: current master version
-        run: echo "::set-output name=version::$(git show origin/master:pterm/version.py | cut -d' -f2)"
+        run: echo "::set-output name=version::$(git show origin/master:pterm/version.py | cut -d\' -f2)"
         id: version
       - name: current fragment
         run: echo "::set-output name=fragment::$(echo ${GITHUB_REF##*/} | tr -s '-' ' ' | cut -d ' ' -f1)"
@@ -28,7 +28,7 @@ jobs:
           current-version: ${{ steps.version.outputs.version }}
           version-fragment: ${{ steps.fragment.outputs.fragment }}
       - name: update current version
-        run: echo "__version = '${{ steps.next_version.outputs.next-version }}'" > pterm/version.py
+        run: echo "__version__ = '${{ steps.next_version.outputs.next-version }}'" > pterm/version.py
       - name: current branch
         run: echo "::set-output name=branch::${GITHUB_REF##*/}"
         id: branch
@@ -37,5 +37,5 @@ jobs:
           git config --global user.name 'Mike'
           git config --global user.email 'mhristof@users.noreply.github.com'
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
-          git diff --exit-code || git commit version.txt -m 'bumped version'
+          git diff --exit-code || git commit pterm/version.py -m 'bumped version'
           git push origin HEAD:${{ steps.branch.outputs.branch }}
