@@ -1,4 +1,6 @@
 # pterm
+[![PyPI version](https://badge.fury.io/py/pterm.svg)](https://badge.fury.io/py/pterm)
+
 Generates a bunch of usefull iterm2 dynamic profiles
 
 It will load your ~/.aws/config and will generate all the required profiles
