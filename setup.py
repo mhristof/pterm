@@ -1,13 +1,14 @@
 #! /usr/bin/env python
 import setuptools
+from pterm import version
 
 setuptools.setup(
     name="pterm",
-    version=tuple(open('version.txt', 'r'))[0],
+    version=version.__version__,
     author="Mike Christof",
     author_email="mhristof@gmail.com",
     description="Setup iterm2",
-    long_description="",
+    long_description=tuple(open('README.md', 'r'))
     long_description_content_type="text/markdown",
     url="https://github.com/mhristof/pterm",
     packages=setuptools.find_packages(),
