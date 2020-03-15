@@ -137,7 +137,7 @@ def mkprofile(aws_profile, account=None, role=None, source_profile=None, tags=No
     if tags is not None:
         ret['Tags'] += [x for x in tags if x]
 
-    if 'prod' in aws_profile:
+    if 'prod' in aws_profile and 'nonprod' not in aws_profile:
         ret["Background Color"] = {
             "Red Component": 0.217376708984375,
             "Color Space": "sRGB",
