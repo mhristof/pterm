@@ -6,6 +6,7 @@ from pterm import create_aws_profiles
 from pterm import sort_aws_config
 from pterm import triggers
 from pterm import create_k8s_profile
+from pterm import find_source_profile
 import re
 import os
 import yaml
@@ -249,3 +250,28 @@ def cluster_config(name, aws_profile='aws-profile'):
         '      - name: AWS_PROFILE\n'
         f'        value: {aws_profile}\n'
     )
+
+def test_find_source_profile():
+    cases = [
+        [
+            'profile',
+            [{
+                'Name': 'profile',
+                'Tags': [
+                    'source_profile_spf'
+                ],
+            }],
+            'spf',
+        ],
+        [
+            'nonexistingprofile',
+            [],
+            None,
+        ]
+    ]
+
+    for profile, profiles, result in cases:
+        assert find_source_profile(profile, profiles) == result
+
+    pass
+

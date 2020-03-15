@@ -308,15 +308,6 @@ def create_k8s_profile(this, cfg, aws_profiles):
         pass
 
     if aws_profile is not None:
-        aws_profile_tags = [
-            x for x in aws_profiles
-            if x['Name'] == aws_profile
-        ][0]['Tags']
-        source_profile = [
-            x.replace('source_profile_', '')
-            for x in aws_profile_tags
-            if x is not None and x.startswith('source_profile_')
-        ][0]
         cmd += [f'AWS_PROFILE={aws_profile}']
 
     cmd += [
@@ -332,6 +323,7 @@ def create_k8s_profile(this, cfg, aws_profiles):
         tags=['k8s'],
     )
 
+    source_profile = find_source_profile(aws_profile, aws_profiles)
     if source_profile is not None:
         new = alt_a_split_profile(new, f'login-{source_profile}')
 
@@ -343,6 +335,24 @@ def create_k8s_profile(this, cfg, aws_profiles):
         "Green Component": 0
     }
     return new
+
+
+def find_source_profile(profile, aws_profiles):
+    this_aws_profile = [
+        x for x in aws_profiles
+        if x.get('Name') == profile
+    ]
+    try:
+        this_aws_profile = this_aws_profile[0]
+    except IndexError:
+        print(f"Error, profile ${profile} not found in aws config")
+        return None
+
+    return [
+        x.replace('source_profile_', '')
+        for x in this_aws_profile['Tags']
+        if x is not None and x.startswith('source_profile_')
+    ][0]
 
 
 def create_vault_profile(name):

@@ -43,6 +43,11 @@ def main():
                         default=os.path.expanduser("~/.kube/config"),
                         help='kubectl configuration file')
 
+    parser.add_argument('-K', '--disable-kubernetes',
+                        action='store_true',
+                        default=False,
+                        help='Disable kubernetes support')
+
     parser.add_argument('-s', '--sort',
                         action='store_true',
                         help='Sort the aws config')
@@ -58,7 +63,10 @@ def main():
                         action='count',
                         default=0,
                         help='Increase verbosity')
-    parser.add_argument('--version', action='version', version='%(prog)s ' + version.__version__)
+    parser.add_argument('--version',
+                        action='version',
+                        version='%(prog)s ' + version.__version__
+                        )
 
     args = parser.parse_args()
 
@@ -68,21 +76,17 @@ def main():
     if args.sort:
         sort_aws_config(args.aws_config, args.dry)
 
+    profiles = {}
     aws_profiles = create_aws_profiles(args.aws_config)
-    k8s_profiles = create_k8s_profiles(
-        args.kube_config, aws_profiles, args.dry
-    )
-    extra_profiles = [
+    profiles['Profiles'] = aws_profiles
+    if not args.disable_kubernetes:
+        profiles['Profiles'] += create_k8s_profiles(
+            args.kube_config, aws_profiles, args.dry
+        )
+    profiles['Profiles'] += [
         create_profile("pterm-default", change_title=True, badge=False),
         create_vault_profile('vault-server-dev'),
     ]
-
-    profiles = {
-        "Profiles":
-            aws_profiles +
-            k8s_profiles +
-            extra_profiles
-    }
 
     if args.diff:
         current = [x.rstrip() for x in list(tuple(open(args.dest, 'r')))]
