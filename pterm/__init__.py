@@ -367,18 +367,12 @@ def create_vault_profile(name):
             '--version', _env={'VAULT_CLI_NO_COLOR': "true"}
         ).strip().split()
     )
-    new['Smart Selection Rules'] = [
+    new['Triggers'] = [
         {
-            "notes": "root token",
-            "precision": "very_high",
-            "regex": "^Root Token: (.*)",
-            "actions": [
-                {
-                    "title": "copy export vault token to clipboard",
-                    "action": 3,
-                    "parameter": r"~/bin/create-export-vault-token.sh \1",
-                }
-            ]
+            "action": "CoprocessTrigger",
+            "parameter": r"/bin/bash -c 'echo \1 > ~\/.vault-token'",
+            "regex": r"Root Token: (s\..*)",
+            "partial": True
         }
     ]
 
