@@ -370,7 +370,7 @@ def create_vault_profile(name):
     new['Triggers'] = [
         {
             "action": "CoprocessTrigger",
-            "parameter": r"/bin/bash -c 'echo \1 > ~\/.vault-token'",
+            "parameter": r"/bin/bash -c 'echo \1 > ~/.vault-token'",
             "regex": r"Root Token: (s\..*)",
             "partial": True
         }
