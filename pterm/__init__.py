@@ -1,4 +1,6 @@
-#! /usr/bin/env pyteron3
+#! /usr/bin/env python3
+
+"""Generate iterm2 profiles for your aws and k8s clusters."""
 
 import configparser
 import os
@@ -8,14 +10,15 @@ import collections
 import difflib
 import tempfile
 
-has_vault = True
+HAS_VAULT = True
 try:
     from sh import vault
 except ImportError:
-    has_vault = False
+    HAS_VAULT = False
 
 
 def sort_aws_config(path, dry=False):
+    """Sort the aws config alphabetically."""
     config = configparser.ConfigParser({}, collections.OrderedDict)
     config.read(path)
 
@@ -44,42 +47,44 @@ def sort_aws_config(path, dry=False):
 
 
 def aws_config_to_profiles(aws_config):
+    """Convert aws config to iterm2 profiles."""
     config = configparser.ConfigParser()
     config.read(aws_config)
     ret = {}
-    loggin_profiles = {}
-    for x in config.sections():
+    for section in config.sections():
         new = {
-            'name': x.split()[1],
+            'name': section.split()[1],
             'account': None,
             'role': None,
-            'azure': config[x].get('azure_tenant_id', None) is not None,
-            'source_profile': config[x].get('source_profile', None),
+            'azure': config[section].get('azure_tenant_id', None) is not None,
+            'source_profile': config[section].get('source_profile', None),
         }
-        if 'role_arn' in config[x]:
-            new['account'] = config[x]['role_arn'].split(':')[4]
-            new['role'] = config[x]['role_arn'].split(':')[5]
+        if 'role_arn' in config[section]:
+            new['account'] = config[section]['role_arn'].split(':')[4]
+            new['role'] = config[section]['role_arn'].split(':')[5]
         ret[new['name']] = new
 
     return ret
 
 
 def aws_azure_login_path():
+    """Return the path for aws_azure_login executabl."""
     return which('aws-azure-login')
 
 
 def which(exe):
+    """Return the path for a binary."""
     return os.path.dirname(shutil.which(exe))
 
 
 def create_aws_profiles(aws_config, azure_path=None):
+    """Create aws profiles from a config."""
     if azure_path is None:
         azure_path = aws_azure_login_path
     aws_profiles = aws_config_to_profiles(aws_config)
 
     profiles = []
-    login_profile = {}
-    for name, profile in aws_profiles.items():
+    for _, profile in aws_profiles.items():
         new = mkprofile(
             profile['name'],
             source_profile=profile['source_profile'],
@@ -91,7 +96,7 @@ def create_aws_profiles(aws_config, azure_path=None):
         )
         profiles += [new]
 
-    for name, profile in aws_profiles.items():
+    for _, profile in aws_profiles.items():
         source_profile = profile.get("source_profile", None)
         if source_profile is None:
             continue
@@ -111,6 +116,7 @@ def create_aws_profiles(aws_config, azure_path=None):
 
 
 def alt_a_split_profile(dictionary, profile):
+    """Create the split profile."""
     dictionary['Keyboard Map']["0x61-0x80000"] = {
         "Action": 28,
         "Text": profile,
@@ -119,6 +125,7 @@ def alt_a_split_profile(dictionary, profile):
 
 
 def mkprofile(aws_profile, account=None, role=None, source_profile=None, tags=None):
+    """Return a new profile."""
     user = os.getenv("USER")
     ret = create_profile(
         aws_profile,
@@ -150,6 +157,7 @@ def mkprofile(aws_profile, account=None, role=None, source_profile=None, tags=No
 
 
 def create_profile(name, cmd=None, change_title=False, tags=None, badge=True):
+    """Create a new profile."""
     if tags is None:
         tags = []
 
@@ -179,6 +187,7 @@ def create_profile(name, cmd=None, change_title=False, tags=None, badge=True):
 
 
 def keybinds():
+    """Return the dictionary for keybinds."""
     return {
         # cmd + shift + -
         "0x5f-0x120000": {
@@ -194,6 +203,7 @@ def keybinds():
 
 
 def triggers():
+    """Return the triggers for profiles."""
     return [
         {
             "partial": True,
@@ -211,6 +221,7 @@ def triggers():
 
 
 def smart_selection_rules():
+    """Return the smart selection roles for the profiles."""
     return [
         {
             "notes": "terraform aws resource",
@@ -288,6 +299,7 @@ def smart_selection_rules():
 
 
 def create_k8s_profile(this, cfg, aws_profiles):
+    """Create a kubernetes profile."""
     user = os.getenv("USER")
     aws_profile = None
     cluster = this['current-context']
@@ -338,6 +350,7 @@ def create_k8s_profile(this, cfg, aws_profiles):
 
 
 def find_source_profile(profile, aws_profiles):
+    """Retrieve the source profile for a profile."""
     this_aws_profile = [
         x for x in aws_profiles
         if x.get('Name') == profile
@@ -356,7 +369,8 @@ def find_source_profile(profile, aws_profiles):
 
 
 def create_vault_profile(name):
-    if not has_vault:
+    """Create a vault profile."""
+    if not HAS_VAULT:
         return {}
     new = create_profile(
         name,

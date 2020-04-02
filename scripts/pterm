@@ -1,26 +1,25 @@
 #! /usr/bin/env python3
+"""main script for the iterm profiles."""
 
 import json
-import sys
+import argparse
 import os
 from difflib import Differ
-import tempfile
-import yaml
 import copy
 import pprint
+import yaml
 import iterm2
 
-from pterm import create_aws_profiles
-from pterm import create_profile
-from pterm import sort_aws_config
-from pterm import create_k8s_profile
-from pterm import create_vault_profile
-from pterm import version
+from pterm import create_aws_profiles  # pylint: disable=import-self
+from pterm import create_profile  # pylint: disable=import-self
+from pterm import sort_aws_config  # pylint: disable=import-self
+from pterm import create_k8s_profile  # pylint: disable=import-self
+from pterm import create_vault_profile  # pylint: disable=import-self
+from pterm import version  # pylint: disable=import-self
 
 
 def main():
     """docstring for main"""
-    import argparse
     parser = argparse.ArgumentParser(
         description='Generates iterm2 dynamic profiles'
     )
@@ -91,12 +90,12 @@ def main():
     if args.diff:
         current = [x.rstrip() for x in list(tuple(open(args.dest, 'r')))]
         new = json.dumps(profiles, indent=4).split('\n')
-        d = Differ()
-        result = list(d.compare(current, new))
+        diff = Differ()
+        result = list(diff.compare(current, new))
         result = [x for x in result if x[0] != ' ']
         if result:
-            pp = pprint.PrettyPrinter(width=200)
-            pp.pprint(result)
+            pretty_res = pprint.PrettyPrinter(width=200)
+            pretty_res.pprint(result)
     elif args.dry:
         print(json.dumps(profiles, indent=4))
     else:
@@ -107,6 +106,7 @@ def main():
 
 
 async def set_default(connection):
+    """Set the default profile in iterm."""
     all_profiles = await iterm2.PartialProfile.async_query(connection)
     for profile in all_profiles:
         if profile.name == "pterm-default":
@@ -115,8 +115,7 @@ async def set_default(connection):
 
 
 def create_k8s_profiles(kube_config, aws_profiles, dry):
-    """docstring for create_k8s_profiles"""
-    user = os.getenv("USER")
+    """Create the k8s profiles"""
 
     if not os.path.exists(kube_config):
         return []
