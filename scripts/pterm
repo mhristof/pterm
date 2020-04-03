@@ -16,6 +16,7 @@ from pterm import sort_aws_config  # pylint: disable=import-self
 from pterm import create_k8s_profile  # pylint: disable=import-self
 from pterm import create_vault_profile  # pylint: disable=import-self
 from pterm import version  # pylint: disable=import-self
+from pterm import generate_key_profiles  # pylint: disable=import-self
 
 
 def main():
@@ -46,6 +47,12 @@ def main():
                         action='store_true',
                         default=False,
                         help='Disable kubernetes support')
+    parser.add_argument('-a', '--add',
+                        default=None,
+                        help='Add a profile from an aws credentials file')
+    parser.add_argument('--keychain',
+                        default='login.keychain-db',
+                        help='The keychain to store the aws credentials.')
 
     parser.add_argument('-s', '--sort',
                         action='store_true',
@@ -75,9 +82,14 @@ def main():
     if args.sort:
         sort_aws_config(args.aws_config, args.dry)
 
-    profiles = {}
+    profiles = {
+        'Profiles': []
+    }
+
+    profiles['Profiles'] += generate_key_profiles(args.add, args.keychain)
+
     aws_profiles = create_aws_profiles(args.aws_config)
-    profiles['Profiles'] = aws_profiles
+    profiles['Profiles'] += aws_profiles
     if not args.disable_kubernetes:
         profiles['Profiles'] += create_k8s_profiles(
             args.kube_config, aws_profiles, args.dry

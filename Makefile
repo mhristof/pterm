@@ -16,6 +16,10 @@ endif
 pytest: .build
 	docker run $(DOCKER_ARGS) -v $(PWD)/scripts/test_pterm.py:/work/scripts/test_pterm.py pterm
 
+dist:
+	python3 setup.py sdist bdist_wheel
+.PHONY: dist
+
 all:
 	@echo "Makefile needs your attention"
 

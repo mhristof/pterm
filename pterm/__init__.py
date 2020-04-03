@@ -2,13 +2,24 @@
 
 """Generate iterm2 profiles for your aws and k8s clusters."""
 
+import sys
 import configparser
 import os
+import re
+import json
 from copy import deepcopy
 import shutil
 import collections
 import difflib
 import tempfile
+import boto3
+import sh
+
+HAS_SECURITY = True
+try:
+    from sh import security  # pylint: disable=no-name-in-module
+except ImportError:
+    HAS_SECURITY = False
 
 HAS_VAULT = True
 try:
@@ -46,6 +57,12 @@ def sort_aws_config(path, dry=False):
         config.write(out)
 
 
+def dissasemble_iam_arn(arn):
+    account = arn.split(':')[4]
+    role = arn.split(':')[5]
+    return account, role
+
+
 def aws_config_to_profiles(aws_config):
     """Convert aws config to iterm2 profiles."""
     config = configparser.ConfigParser()
@@ -59,9 +76,10 @@ def aws_config_to_profiles(aws_config):
             'azure': config[section].get('azure_tenant_id', None) is not None,
             'source_profile': config[section].get('source_profile', None),
         }
-        if 'role_arn' in config[section]:
-            new['account'] = config[section]['role_arn'].split(':')[4]
-            new['role'] = config[section]['role_arn'].split(':')[5]
+        if config[section].get('role_arn', None) is not None:
+            new['account'], new['role'] = dissasemble_iam_arn(
+                config[section]['role_arn']
+            )
         ret[new['name']] = new
 
     return ret
@@ -398,3 +416,160 @@ def create_vault_profile(name):
     }
 
     return new
+
+
+def get_keys_from_file(csv):
+    """Extract the credentials from a csv file."""
+    lines = tuple(open(csv, 'r'))
+    creds = lines[1]
+    access = creds.split(',')[2]
+    secret = creds.split(',')[3]
+    return access, secret
+
+
+def cache():
+    return 'pterm-iam-list'
+
+def generate_key_profiles(creds, keychain):
+    """Create the AWS profiles from credentials the user has stored."""
+    ret = []
+
+    if creds is not None:
+        profile_from_creds(creds, keychain, cache())
+
+    arns = security_find(cache())
+
+    for arn in json.loads(arns):
+        ret += [profile_from_arn(arn)]
+
+    return ret
+
+
+def profile_from_creds(creds, keychain, cache):
+    """Create a profile from an AWS credentials file."""
+    access_key, secret_key = get_keys_from_file(creds)
+
+    arn = security_store(access_key, secret_key, keychain, cache)
+    return profile_from_arn(arn)
+
+
+def profile_from_arn(arn):
+    """Create a profile from an ARN."""
+    tags = list(dissasemble_iam_arn(arn))
+
+    _, key, _, secret = re.split("[ =]", security_find(arn))
+    alias = account_aliases(key, secret)
+    if alias != '':
+        tags += [alias]
+
+    user = os.getenv("USER")
+    ret = create_profile(
+        arn,
+        cmd="/bin/false",
+        change_title=False,
+        tags=tags,
+    )
+    ret['Initial Text'] = f'export $(security find-generic-password -a {user} -s {arn} -w)'
+    ret["Custom Command"] = "No"
+
+    return ret
+
+
+def aws_key_name(access_key, secret_key):
+    """Retrieve the arn of the given key."""
+    client = boto3.client(
+        'sts',
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+    )
+
+    response = client.get_caller_identity()
+    return response['Arn']
+
+
+def security_find(name):
+    """Find a macOS keychain item with given name.
+
+    Returns None if nothing is found.
+    """
+    try:
+        return str(security(
+            'find-generic-password',
+            '-a', os.getenv("USER"),
+            '-s', name,
+            '-w'
+        )).rstrip()
+    except sh.ErrorReturnCode_44:  # pylint: disable=no-member
+        return None
+
+
+def account_aliases(access_key, secret_key):
+    """Find an AWS account alias."""
+    client = boto3.client(
+        'iam',
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+    )
+
+    paginator = client.get_paginator('list_account_aliases')
+    for response in paginator.paginate():
+        try:
+            return response['AccountAliases'][0]
+        except (IndexError, KeyError) as _:
+            pass
+    return ''
+
+
+def security_store(access_key, secret_key, keychain, cache):
+    """Store the AWS credentials in the macOS keychain.
+
+    An entry is also added in the cache keychain entry, see
+    security_add_to_list.
+    """
+    name = aws_key_name(access_key, secret_key)
+    data = f"AWS_ACCESS_KEY_ID={access_key} AWS_SECRET_KEY_ID={secret_key}"
+    existing_key = security_find(name)
+
+    if existing_key == data:
+        return name
+
+    security(
+        'add-generic-password',
+        '-a', os.getenv("USER"),
+        '-s', name,
+        '-w', data,
+        keychain
+    )
+
+    security_add_to_list(name, keychain, cache)
+
+    return name
+
+
+def security_add_to_list(name, keychain, cache):
+    """Add a key in the keychain cache.
+
+    MacOS doesnt allow to list all the secrets so a list is maintaind for
+    pterm to allow adding all profiles that were created via cmd line
+    """
+    data = security_find(cache)
+
+    if data is not None:
+        security(
+            'delete-generic-password', '-a', os.getenv("USER"), '-s', cache
+        )
+        data = json.loads(data)
+    else:
+        data = []
+
+    data += [name]
+
+    security(
+        'add-generic-password',
+        '-a', os.getenv("USER"),
+        '-s', cache,
+        '-w', json.dumps(data),
+        keychain
+    )
+
+    return data

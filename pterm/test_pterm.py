@@ -7,10 +7,18 @@ from pterm import sort_aws_config
 from pterm import triggers
 from pterm import create_k8s_profile
 from pterm import find_source_profile
+from pterm import generate_key_profiles
+import random
 import re
 import os
 import yaml
+import pterm
+import pytest
 
+try:
+    from sh import security
+except ImportError:
+    pass
 
 def create_config(contents):
     temp = tempfile.NamedTemporaryFile(mode='w', delete=False)
@@ -275,3 +283,39 @@ def test_find_source_profile():
 
     pass
 
+def aws_key_name(access, secret):
+    return f"arn:aws:iam::1234563245:user/Alice/pytest"
+
+def cache():
+    rnd = int(random.random() * 1000000)
+    return f"pytest-cache"
+
+def account_aliases(access, secret):
+    return "awsalias"
+
+def test_generate_key_profiles():
+    if not pterm.HAS_SECURITY:
+        pytest.skip("Unable to find security binary")
+
+    creds = tempfile.NamedTemporaryFile('w', delete=False)
+
+    print("""User name,Password,Access key ID,Secret access key,Console login link
+admin,,AKIxxxxxxxxxxxxxxxNS,YiiKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx1ULY,h""", file=creds)
+    creds.close()
+
+    try:
+        security('delete-generic-password', '-a', os.getenv("USER"), '-s', cache())
+        security('delete-generic-password', '-a', os.getenv("USER"), '-s', aws_key_name(None, None))
+    except:
+        pass
+
+    pterm.aws_key_name = aws_key_name
+    pterm.cache = cache
+    pterm.account_aliases = account_aliases
+
+    res = generate_key_profiles(creds.name, "login.keychain-db")
+    assert res[0]['Name'] == aws_key_name(None, None)
+
+    # ensure the cache item is picked up if we run the function without a creds file
+    res = generate_key_profiles(None,  "login.keychain-db")
+    assert res[0]['Name'] == aws_key_name(None, None)
