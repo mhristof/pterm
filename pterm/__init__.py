@@ -240,7 +240,13 @@ def triggers():
 
 def smart_selection_rules():
     """Return the smart selection roles for the profiles."""
-    return [
+    local = os.path.expanduser('~/.pterm.ssr.json')
+    local_ssr = []
+    if os.path.isfile(local):
+        with open(local) as out:
+            local_ssr = json.load(out)
+
+    return local_ssr + [
         {
             "notes": "terraform aws resource",
             "precision": "normal",
@@ -438,6 +444,9 @@ def generate_key_profiles(creds, keychain):
         profile_from_creds(creds, keychain, cache())
 
     arns = security_find(cache())
+
+    if arns is None:
+        return ret
 
     for arn in json.loads(arns):
         ret += [profile_from_arn(arn)]
